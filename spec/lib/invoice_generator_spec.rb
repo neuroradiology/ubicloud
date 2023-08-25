@@ -34,6 +34,7 @@ RSpec.describe InvoiceGenerator do
         }],
         cost: cost
       }],
+      subtotal: cost,
       cost: cost
     })
   end
@@ -103,6 +104,38 @@ RSpec.describe InvoiceGenerator do
 
     described_class.new(begin_time, end_time, true).run
     expect(Invoice.count).to eq(1)
+  end
+
+  it "handles discounts" do
+    generate_vm_billing_record(p1, vm1, Sequel::Postgres::PGRange.new(begin_time - 90 * day, end_time + 90 * day))
+
+    cost_before = described_class.new(begin_time, end_time).run.first[:cost]
+    p1.update(discount: 10)
+    cost_after = described_class.new(begin_time, end_time).run.first[:cost]
+
+    expect(cost_after).to eq(cost_before * 0.9)
+  end
+
+  it "handles credits" do
+    generate_vm_billing_record(p1, vm1, Sequel::Postgres::PGRange.new(begin_time - 90 * day, end_time + 90 * day))
+
+    cost_before = described_class.new(begin_time, end_time).run.first[:cost]
+    p1.update(credit: 10)
+    cost_after = described_class.new(begin_time, end_time, true).run.first[:cost]
+
+    expect(cost_after).to eq(cost_before - 10)
+    expect(p1.reload.credit).to eq(0)
+  end
+
+  it "handles discounts and credits at the same time" do
+    generate_vm_billing_record(p1, vm1, Sequel::Postgres::PGRange.new(begin_time - 90 * day, end_time + 90 * day))
+
+    cost_before = described_class.new(begin_time, end_time).run.first[:cost]
+    p1.update(credit: 10, discount: 10)
+    cost_after = described_class.new(begin_time, end_time, true).run.first[:cost]
+
+    expect(cost_after).to eq(cost_before * 0.9 - 10)
+    expect(p1.reload.credit).to eq(0)
   end
 end
 
