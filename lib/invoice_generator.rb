@@ -21,10 +21,10 @@ class InvoiceGenerator
 
         project_content[:resources] = []
         project_content[:subtotal] = 0
-        project_records.group_by { |pr| pr[:resource_id] }.each do |resource_id, line_items|
+        project_records.group_by { |pr| [pr[:resource_id], pr[:resource_name]] }.each do |resource, line_items|
           resource_content = {}
-          resource_content[:resource_id] = resource_id
-          resource_content[:resource_name] = line_items.first[:resource_name]
+          resource_content[:resource_id] = resource[0]
+          resource_content[:resource_name] = resource[1]
 
           resource_content[:line_items] = []
           resource_content[:cost] = 0
